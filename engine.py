@@ -8,12 +8,6 @@ import os.path
 import os
 import sys
 
-#andrwafawe
-#OLIVIA WAS HERE
-#OLIVIA ROCKS SOCKS!
-#O
-
-
 timestr = time.strftime("%Y%m%d-%H%M%S")
 program = os.path.basename(sys.argv[0])
 
