@@ -28,17 +28,28 @@ class Region(Enum):
 
 class GlobalParameters(object):
     def __init__(self):
-        self.model_type = Model.PREVALANCE #or incidence
+        self.model_type = Model.INCIDENCE #or incidence
         self.discount = 0.15
         self.price_increase = 0.02
         self.decay_time = 5.0
         self.erosion = 0.4
         self.year_model_ends = 2034
         self.years = range(2015, self.year_model_ends + 1)
-        self.modelTime = {}
-        for index, year in enumerate(self.years):
-            self.modelTime[year] = range(1, 13)
+        # self.modelTime = {}
+        # for index, year in enumerate(self.years):
+        #     self.modelTime[year] = enumerate(range(1 ,13))
+        #     for index, month in self.modelTime[year]:
+        #         month = {index: 'Andrew'}
+        # print(dir(self.modelTime)
 params = GlobalParameters()
+
+class TreatmentMatrix(object):
+    def __init__(self, years, patients):
+        self.years = years
+        self.cohorts = {}
+        # for index, year in enumerate(years):
+        #     #create months
+
 
 #Clinical trial assumptions for a indication
 class Indication(object):
@@ -158,28 +169,32 @@ class Market(object):
         self.uptake = uptake
         print(uptake)
 
+class Treatment(object):
+    def __init__(self, market: Market, indication: Indication, params: GlobalParameters):
+        self.market = market
+        self.indication = indication
+        self.params = params
+
+    def treatPatients(self):
+        patients = {}
+        print('Begin model for: ' + self.indication.name + ' ' + str(self.market.region) + ' ' + str(self.params.model_type))
+        for year in self.params.modelTime:
+
+            #prevalance model
+            if self.params.model_type == Model.PREVALANCE:
+                patients[year] = (self.market.prevalance * self.market.totalPopulation[year])
+
+            #incidence model
+            elif self.params.model_type == Model.INCIDENCE:
+                patients[year] = (self.market.incidence * self.market.totalPopulation[year])
+
+                # patients[year] = year
+                # for month in year:
+                #     patients[month] = self.market.incidence * self.market.totalPopulation[year]
+
 spattergroit = Indication('Spattergroit')
 usa = Market(Region.UNITEDSTATES, params)
+usa_spattergroit = Treatment(usa, spattergroit, params)
+usa_spattergroit.treatPatients()
 
-# #GET PATIENT POPULATION
-#
-#     if model_type == Model.PREVALANCE:
-#     elif model_type == Model.INCIDENCE:
-#         patients[year] = incidence * total_population[year]
-#     else:
-#         print('model type not selected! BREAK!')
-#         break
-
-# #PREVALENCE TREATMENT FLOW
-# if model_type == Model.PREVALANCE:
-#     print('Begin prevelance model treatment')
-#     patients = {}
-#     for year in total_population:
-#         patients[year] = prevalance * total_population[year]
-#
-# #INCIDENCE TREATMENT FLOW
-# elif model_type == Model.INCIDENCE:
-#     print('Begin incidence model tratement')
-#     patients = {}
-#     for year in total_population:
-#         patients[year] = incidence * total_population[year]
+# print(usa_spattergroit.market.region)
