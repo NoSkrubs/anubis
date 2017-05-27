@@ -184,12 +184,7 @@ class TreatmentMatrix(object):
 		# months = list(range(len(params.years) * 12))
 		months = arange(len(params.years) * 12)
 		cohorts = arange(len(params.years) * 12)
-		patientMatrix = [arange(len(params.years) * 12), arange(len(params.years) * 12)]
-		treatmentMatrix = [arange(len(params.years) * 12), arange(len(params.years) * 12)]
-		print('patientMatrix:')
-		print(patientMatrix)
-		print('cohortMatrix:')
-		print(treatmentMatrix)
+
 
 		#select relevant patient population
 		if params.model_type == Model.INCIDENCE:
@@ -211,12 +206,18 @@ class TreatmentMatrix(object):
 		totalPatients = arange(len(params.years) * 12)
 
 		#initiate matrix calcs
+		patientMatrix = [arange(len(params.years) * 12), arange(len(params.years) * 12)]
+		treatmentMatrix = [arange(len(params.years) * 12), arange(len(params.years) * 12)]
+		print('patientMatrix:')
+		print(patientMatrix)
+		print('cohortMatrix:')
+		print(treatmentMatrix)  
 		for cohort in range(len(cohorts)):
 			print('Begin cohort loop for cohort: ' + str(cohort))
 			months = arange(len(params.years) * 12)
 			for month in range(len(months)):
 				print('Begin month loop for month: ' + str(month))
-				print(cohorts)
+				# print(cohorts)
 				#this seeds both incident and prevelant models for month first month
 				if month == 0 and cohort == 0:
 					print('month and cohort are 0')
@@ -240,10 +241,11 @@ class TreatmentMatrix(object):
 
 				#If the Month is less than the Cohort # then the cohort population is 0
 				if month < cohort:
-					print('month is less than cohort')
+					print('month is less than cohort ' + 'month: ' + str(month) + ' cohort: ' + str(cohort))
+					print(len(treatmentMatrix[1]))
+					print(len(treatmentMatrix[2]))
 					treatmentMatrix[cohort][month] = 0
 					patientMatrix[cohort][month] = 0
-
 
 				#If the month is less than Cohort # + Induction period length then the cohort population is initial patient population
 				elif cohort + self.indication.inductionLength > month:
@@ -287,29 +289,6 @@ class TreatmentMatrix(object):
 		sales = dosesSold * self.market.price
 
 		print(sales)
-
-# class Treatment(object):
-#     def __init__(self, market: Market, indication: Indication, params: GlobalParameters):
-#         self.market = market
-#         self.indication = indication
-#         self.params = params
-#
-#     def treatPatients(self):
-#         patients = {}
-#         print('Begin model for: ' + self.indication.name + ' ' + str(self.market.region) + ' ' + str(self.params.model_type))
-#         for year in self.params.modelTime:
-#
-#             #prevalance model
-#             if self.params.model_type == Model.PREVALANCE:
-#                 patients[year] = (self.market.prevalance * self.market.totalPopulation[year])
-#
-#             #incidence model
-#             elif self.params.model_type == Model.INCIDENCE:
-#                 patients[year] = (self.market.incidence * self.market.totalPopulation[year])
-
-				# patients[year] = year
-				# for month in year:
-				#     patients[month] = self.market.incidence * self.market.totalPopulation[year]
 
 params = GlobalParameters()
 spattergroit = Indication('Spattergroit')
