@@ -194,13 +194,15 @@ class TreatmentMatrix(object):
 		else:
 			print('no model selected exit function')
 			return
+		print(annualPatients)
 
 		#seed array of monthly patients
-		monthlyPatients = arange(len(params.years) * 12)
+		monthlyPatients = []
 		for year in annualPatients:
-			for month in months:
-				monthlyPatients[month] = annualPatients[year]
-
+			for index in range(12):
+				monthlyPatients.insert(index, annualPatients[year])
+		print(len(monthlyPatients))
+		print(sum(array(monthlyPatients)))
 		cohortPopulation = arange(len(params.years) * 12)
 		totalDoses = arange(len(params.years) * 12)
 		totalPatients = arange(len(params.years) * 12)
@@ -275,7 +277,6 @@ class TreatmentMatrix(object):
 			totalDoses[cohort] = totalDoses[cohort] * self.market.compliance
 
 		#sum it all up
-		print(totalPatients)
 		numpyDoseArray = array(totalDoses)
 		numpyPatientArray = array(totalPatients)
 
