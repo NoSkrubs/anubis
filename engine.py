@@ -45,12 +45,13 @@ class Indication(object):
 		self.name = disease
 		self.inductionDoses = 5.0 #react user input, total doses
 		self.inductionLength = 2.0 #react user input, in months
-		self.inductDosesPerMonth = self.inductionDoses / self.inductionLength
+		self.inductionDosesPerMonth = self.inductionDoses / self.inductionLength
 		self.maintenanceDoses = 8.0 #react user input, per treatment period
 		self.maintenanceDays = 90.0 #react user input, days of treatement period
 		self.maintenanceDuration = 5.0 #react user input, in dosing periods
 		self.dosingPeriodMonths = self.maintenanceDays/(365.25/12) #convert to months
 		self.dosingLength = self.dosingPeriodMonths * self.maintenanceDuration #half life of maintenance period
+		self.maintenanceDosesPerMonth = self.maintenanceDoses / self.dosingPeriodMonths
 
 #ultimately to be inited from a parse object
 class Market(object):
@@ -209,17 +210,22 @@ class TreatmentMatrix(object):
 					monthlyPatients.append(annualPatients[year])
 		print(monthlyPatients)
 		cohortPopulation = arange(len(params.years) * 12) * 0
-		totalDoses = arange(len(params.years) * 12) * 0
 		totalPatients = arange(len(params.years) * 12) * 0
+
+		totalDoses = arange(len(params.years) * 12) * 0.0
 
 		#initiate matrix calcs
 		patientMatrix = []
 		for index in range((len(params.years) * 12)):
 			patientMatrix.append(arange((len(params.years) * 12)) * 0)
-		treatmentMatrix = patientMatrix
+
+		treatmentMatrix = []
+		for index in range((len(params.years) * 12)):
+			treatmentMatrix.append(arange((len(params.years) * 12)) * 0.0)
 
 		#Check before loop
-		print('InductionLength ' + str(self.indication.inductionLength) + ' duration: ' + str(self.indication.dosingLength))
+		print('InductionLength: ' + str(self.indication.inductionLength) + ' duration: ' + str(self.indication.dosingLength))
+		print(' inductiondoses:' + str(self.indication.inductionDosesPerMonth) + ' PostInductionDoses:' + str(self.indication.maintenanceDosesPerMonth))
 
 		for cohort in range(len(cohorts)):
 			# print('Begin cohort loop for cohort: ' + str(cohort))
@@ -231,7 +237,7 @@ class TreatmentMatrix(object):
 				if month == 0 and cohort == 0:
 					print('month and cohort are 0')
 					patientMatrix[cohort][month] = monthlyPatients[month]
-					treatmentMatrix[cohort][month] = float(monthlyPatients[month]) * self.indication.inductionDoses
+					treatmentMatrix[cohort][month] = float(monthlyPatients[month]) * self.indication.inductionDosesPerMonth
 
 				#this controls for population in prevelant model (REVISIT FOR INCIDENT MODEL!)
 				elif month == cohort:
@@ -239,7 +245,7 @@ class TreatmentMatrix(object):
 					prevalanceControl = 0
 					for cohortIndex in range(cohort):
 						prevalanceControl += patientMatrix[cohortIndex][month]
-					print('Prevelance control for cohort: ' + str(cohort) + ' month: ' + str(month) + ', ' + str(prevalanceControl))
+					# print('Prevelance control for cohort: ' + str(cohort) + ' month: ' + str(month) + ', ' + str(prevalanceControl))
 					if prevalanceControl < monthlyPatients[cohort]:
 						cohortPopulation[cohort] = monthlyPatients[cohort] - prevalanceControl
 
@@ -258,7 +264,7 @@ class TreatmentMatrix(object):
 				#If the month is less than Cohort # + Induction period length then the cohort population is initial patient population
 				elif cohort + self.indication.inductionLength > month:
 					# print('month is greater than cohort and induction length')
-					treatmentMatrix[cohort][month] = float(cohortPopulation[cohort]) * self.indication.inductionDoses
+					treatmentMatrix[cohort][month] = float(cohortPopulation[cohort]) * self.indication.inductionDosesPerMonth
 					patientMatrix[cohort][month] = cohortPopulation[cohort]
 
 				elif self.indication.maintenanceDuration == 0:
@@ -274,11 +280,10 @@ class TreatmentMatrix(object):
 				#Otherwise, decay the population based on e^( - Time on Treatment / Duration), as time on treatment grows population declines
 				else:
 					# print('population is decaying')
-					treatmentMatrix[cohort][month] = float(cohortPopulation[cohort]) * decayFactor * self.indication.maintenanceDoses
+					treatmentMatrix[cohort][month] = float(cohortPopulation[cohort]) * decayFactor * self.indication.maintenanceDosesPerMonth
 					patientMatrix[cohort][month] = float(cohortPopulation[cohort]) * decayFactor
-
+					print('Decayed for cohort/month:' + str(cohort) +'/'+ str(month) + ' patients:' + str(patientMatrix[cohort][month]) + ' doses:' + str(treatmentMatrix[cohort][month]))
 				#track the sum
-				# print('month: ' + str(month) + ' cohort: ' + str(cohort) + ', patients: ' + str(float(treatmentMatrix[cohort][month])))
 				totalDoses[cohort] += float(treatmentMatrix[month][cohort])
 				totalPatients[cohort] += float(patientMatrix[month][cohort])
 
@@ -292,8 +297,7 @@ class TreatmentMatrix(object):
 		print('Total doses below,')
 		print(totalDoses)
 
-		monthlyTotalDoses = numpyPatientArray * numpyPatientArray
-		dosesSold = sum(monthlyTotalDoses)
+		dosesSold = sum(numpyDoseArray)
 		sales = dosesSold * self.market.price
 
 		print(sales)
