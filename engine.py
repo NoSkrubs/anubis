@@ -29,19 +29,13 @@ class Region(Enum):
 
 class GlobalParameters(object):
 	def __init__(self):
-		self.model_type = Model.INCIDENCE #or incidence
+		self.model_type = Model.PREVALANCE #or incidence
 		self.discount = 0.15
 		self.price_increase = 0.02
 		self.decay_time = 5.0
 		self.erosion = 0.4
 		self.year_model_ends = 2034
 		self.years = range(2015, self.year_model_ends + 1)
-		# self.modelTime = {}
-		# for index, year in enumerate(self.years):
-		#     self.modelTime[year] = enumerate(range(1 ,13))
-		#     for index, month in self.modelTime[year]:
-		#         month = {index: 'Andrew'}
-		# print(dir(self.modelTime)
 
 #Clinical trial assumptions for a indication
 class Indication(object):
@@ -159,6 +153,8 @@ class Market(object):
 				decayed = exp(-((year - self.patentLoss + 1)/params.decay_time))
 				uptake[year] = max(shareBeforeExpiry * params.erosion, decayed * shareBeforeExpiry)
 		self.uptake = uptake
+		print('Final uptake below,')
+		print(self.uptake)
 
 		#patient populations per year
 		self.incidentPatients = {}
@@ -194,24 +190,27 @@ class TreatmentMatrix(object):
 		else:
 			print('no model selected exit function')
 			return
+		print('annual patients below,')
 		print(annualPatients)
 
 		#seed array of monthly patients
 		monthlyPatients = []
 		for year in annualPatients:
 			for index in range(12):
-				monthlyPatients.insert(index, annualPatients[year])
-		print(len(monthlyPatients))
-		print(sum(array(monthlyPatients)))
-		cohortPopulation = arange(len(params.years) * 12)
-		totalDoses = arange(len(params.years) * 12)
-		totalPatients = arange(len(params.years) * 12)
+				monthlyPatients.append(annualPatients[year])
+		print(monthlyPatients)
+		cohortPopulation = arange(len(params.years) * 12) * 0
+		totalDoses = arange(len(params.years) * 12) * 0
+		totalPatients = arange(len(params.years) * 12) * 0
 
 		#initiate matrix calcs
 		patientMatrix = []
 		for index in range((len(params.years) * 12)):
-			patientMatrix.append(arange((len(params.years) * 12)))
+			patientMatrix.append(arange((len(params.years) * 12)) * 0)
 		treatmentMatrix = patientMatrix
+
+		#Check before loop
+		print('InductionLength ' + str(self.indication.inductionLength) + ' duration: ' + str(self.indication.dosingLength))
 
 		for cohort in range(len(cohorts)):
 			# print('Begin cohort loop for cohort: ' + str(cohort))
@@ -221,7 +220,7 @@ class TreatmentMatrix(object):
 
 				#this seeds both incident and prevelant models for month first month
 				if month == 0 and cohort == 0:
-					# print('month and cohort are 0')
+					print('month and cohort are 0')
 					patientMatrix[cohort][month] = monthlyPatients[month]
 					treatmentMatrix[cohort][month] = float(monthlyPatients[month]) * self.indication.inductionDoses
 
@@ -229,16 +228,17 @@ class TreatmentMatrix(object):
 				elif month == cohort:
 					# print('month equals cohort')
 					prevalanceControl = 0
-					for cohortIndex in range(cohort - 1):
+					for cohortIndex in range(cohort):
 						prevalanceControl += patientMatrix[cohortIndex][month]
+					print('Prevelance control for cohort: ' + str(cohort) + ' month: ' + str(month) + ', ' + str(prevalanceControl))
 					if prevalanceControl < monthlyPatients[cohort]:
 						cohortPopulation[cohort] = monthlyPatients[cohort] - prevalanceControl
+
 					else:
 						cohortPopulation[cohort] = 0
 
 				#implied decayed population at month for cohort
-				decayFactor = exp(-1.0 * (month - (cohort + self.indication.inductionLength - 1.0)) / self.indication.maintenanceDuration)
-				# print('Entering dosing and decay conditional')
+				decayFactor = exp(-1.0 * ((month - (cohort + self.indication.inductionLength - 1.0))/ self.indication.dosingLength))
 
 				#If the Month is less than the Cohort # then the cohort population is 0
 				if month < cohort:
@@ -256,7 +256,6 @@ class TreatmentMatrix(object):
 					treatmentMatrix[cohort][month] = 0
 					patientMatrix[cohort][month] = 0
 
-
 				#If the month is greater than the Cohort # + Induction period, but the decay is less than the rounding threshold then round to 0
 				elif cohortPopulation[cohort] * decayFactor < 0.5:
 					# print('population is decayed')
@@ -270,21 +269,27 @@ class TreatmentMatrix(object):
 					patientMatrix[cohort][month] = float(cohortPopulation[cohort]) * decayFactor
 
 				#track the sum
-				# print('month: ' + str(month) + ' cohort:' + str(cohort))
-				totalDoses[cohort] += float(treatmentMatrix[cohort][month])
-				totalPatients[cohort] += float(patientMatrix[cohort][month])
+				# print('month: ' + str(month) + ' cohort: ' + str(cohort) + ', patients: ' + str(float(treatmentMatrix[cohort][month])))
+				totalDoses[cohort] += float(treatmentMatrix[month][cohort])
+				totalPatients[cohort] += float(patientMatrix[month][cohort])
 
 			totalDoses[cohort] = totalDoses[cohort] * self.market.compliance
 
 		#sum it all up
 		numpyDoseArray = array(totalDoses)
 		numpyPatientArray = array(totalPatients)
+		print('Total patients below,')
+		print(totalPatients)
+		print('Total doses below,')
+		print(totalDoses)
 
 		monthlyTotalDoses = numpyPatientArray * numpyPatientArray
 		dosesSold = sum(monthlyTotalDoses)
 		sales = dosesSold * self.market.price
 
 		print(sales)
+		#Desired total sales amount is $68,748,740,000
+		#2019 sales should be $164,580,000, 2034 sales should be $4,919,110,000
 
 params = GlobalParameters()
 spattergroit = Indication('Spattergroit')
