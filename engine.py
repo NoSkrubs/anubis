@@ -1,5 +1,5 @@
-from collections import namedtuple
-from numpy import exp, arange, array
+from collections import namedtuple, OrderedDict
+from numpy import *
 from decimal import Decimal
 from enum import Enum
 import logging
@@ -35,7 +35,9 @@ class GlobalParameters(object):
 		self.decay_time = 5.0
 		self.erosion = 0.4
 		self.year_model_ends = 2034
-		self.years = range(2015, self.year_model_ends + 1)
+		self.years = arange(2015, self.year_model_ends + 1)
+		print('GlobalParameters years,')
+		print(self.years)
 
 #Clinical trial assumptions for a indication
 class Indication(object):
@@ -71,6 +73,7 @@ class Market(object):
 		self.cashMarketSize = 0.1 #input from react
 
 		self.launchYear = 2019 #input from react
+		self.launchMonth = 9 #input from react
 		self.patentLoss = 2032 #input from react
 		self.peakShare = 0.5 #Pull from parse
 
@@ -102,6 +105,7 @@ class Market(object):
 			,1
 		]
 		self.competitorUptakeSelection = self.uptakeSelection
+		print('Selected update curve: ' + str(self.uptakeSelection))
 
 		#population pulled from parse
 		self.totalPopulation = {
@@ -126,11 +130,12 @@ class Market(object):
 			,2033: 366106000
 			,2034: 368246000
 		}
+		print('Selected country population: '+str(self.totalPopulation))
 
 		#UPDATE CURVE CREATION
 		#create uptake curve
 		rawUptake = {}
-		for index, year in enumerate(params.years):
+		for index, year in ndenumerate(params.years):
 			if year >= self.launchYear: #check to see if drug has launched
 				rawShare = self.peakShare * self.uptakeSelection[year - self.launchYear]
 
@@ -168,6 +173,7 @@ class Market(object):
 			#incidence model
 			self.incidentPatients[year] = (self.incidence * self.totalPopulation[year] * self.uptake[year])
 
+
 class TreatmentMatrix(object):
 	def __init__(self, market: Market, indication: Indication, params: GlobalParameters):
 		#this class is just a connector to subclasses (could be a function)
@@ -184,9 +190,9 @@ class TreatmentMatrix(object):
 
 		#select relevant patient population
 		if params.model_type == Model.INCIDENCE:
-			annualPatients = self.market.incidentPatients
+			annualPatients = OrderedDict(sorted(self.market.incidentPatients.items(), key=lambda t: t[0]))
 		elif params.model_type == Model.PREVALANCE:
-			annualPatients = self.market.prevalentPatients
+			annualPatients = OrderedDict(sorted(self.market.prevalentPatients.items(), key=lambda t: t[0]))
 		else:
 			print('no model selected exit function')
 			return
@@ -197,7 +203,10 @@ class TreatmentMatrix(object):
 		monthlyPatients = []
 		for year in annualPatients:
 			for index in range(12):
-				monthlyPatients.append(annualPatients[year])
+				if year == self.market.launchYear and index < self.market.launchMonth:
+					monthlyPatients.append(0)
+				else:
+					monthlyPatients.append(annualPatients[year])
 		print(monthlyPatients)
 		cohortPopulation = arange(len(params.years) * 12) * 0
 		totalDoses = arange(len(params.years) * 12) * 0
