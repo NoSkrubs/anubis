@@ -1,6 +1,6 @@
 from collections import namedtuple, OrderedDict
 from numpy import *
-from decimal import Decimal
+from decimal import *
 from enum import Enum
 import logging
 import time
@@ -81,6 +81,17 @@ class Market(object):
 		#Market competition
 		self.competitorLaunch = 2025 #input from react
 		self.competitionStrength = 0.5 #input form react in the "strength field"
+
+
+		#Price array
+		self.annualPrice = {}
+		for year in params.years:
+			if year <= self.launchYear:
+				self.annualPrice[year] = self.price
+			else:
+				self.annualPrice[year] = (1 + params.price_increase) * self.annualPrice[year-1]
+				# self.annualPrice.append((1 + params.price_increase) * self.annualPrice[index - 1])
+		print('annual price array: ' + str(self.annualPrice))
 
 		#arrays that would be called from parse
 		self.uptakeSelection = [
@@ -188,7 +199,6 @@ class TreatmentMatrix(object):
 		months = arange(len(params.years) * 12)
 		cohorts = arange(len(params.years) * 12)
 
-
 		#select relevant patient population
 		if params.model_type == Model.INCIDENCE:
 			annualPatients = OrderedDict(sorted(self.market.incidentPatients.items(), key=lambda t: t[0]))
@@ -210,9 +220,9 @@ class TreatmentMatrix(object):
 					monthlyPatients.append(annualPatients[year])
 		print(monthlyPatients)
 		cohortPopulation = arange(len(params.years) * 12) * 0
-		totalPatients = arange(len(params.years) * 12) * 0
 
-		totalDoses = arange(len(params.years) * 12) * 0.0
+		totalPatients = arange(len(params.years) * 12) * Decimal(0)
+		totalDoses = arange(len(params.years) * 12) * Decimal(0.0)
 
 		#initiate matrix calcs
 		patientMatrix = []
@@ -221,7 +231,7 @@ class TreatmentMatrix(object):
 
 		treatmentMatrix = []
 		for index in range((len(params.years) * 12)):
-			treatmentMatrix.append(arange((len(params.years) * 12)) * 0.0)
+			treatmentMatrix.append(arange((len(params.years) * 12)) * Decimal(0.0))
 
 		#Check before loop
 		print('InductionLength: ' + str(self.indication.inductionLength) + ' duration: ' + str(self.indication.dosingLength))
@@ -237,7 +247,7 @@ class TreatmentMatrix(object):
 				if month == 0 and cohort == 0:
 					print('month and cohort are 0')
 					patientMatrix[cohort][month] = monthlyPatients[month]
-					treatmentMatrix[cohort][month] = float(monthlyPatients[month]) * self.indication.inductionDosesPerMonth
+					treatmentMatrix[cohort][month] = Decimal(monthlyPatients[month]) * Decimal(self.indication.inductionDosesPerMonth)
 
 				#this controls for population in prevelant model (REVISIT FOR INCIDENT MODEL!)
 				elif month == cohort:
@@ -253,7 +263,7 @@ class TreatmentMatrix(object):
 						cohortPopulation[cohort] = 0
 
 				#implied decayed population at month for cohort
-				decayFactor = exp(-1.0 * ((month - (cohort + self.indication.inductionLength - 1.0))/ self.indication.dosingLength))
+				decayFactor = Decimal(exp2(-1.0 * ((month - (cohort + self.indication.inductionLength - 1.0))/ self.indication.dosingLength)))
 
 				#If the Month is less than the Cohort # then the cohort population is 0
 				if month < cohort:
@@ -264,7 +274,7 @@ class TreatmentMatrix(object):
 				#If the month is less than Cohort # + Induction period length then the cohort population is initial patient population
 				elif cohort + self.indication.inductionLength > month:
 					# print('month is greater than cohort and induction length')
-					treatmentMatrix[cohort][month] = float(cohortPopulation[cohort]) * self.indication.inductionDosesPerMonth
+					treatmentMatrix[cohort][month] = cohortPopulation[cohort] * Decimal(self.indication.inductionDosesPerMonth)
 					patientMatrix[cohort][month] = cohortPopulation[cohort]
 
 				elif self.indication.maintenanceDuration == 0:
@@ -273,34 +283,39 @@ class TreatmentMatrix(object):
 
 				#If the month is greater than the Cohort # + Induction period, but the decay is less than the rounding threshold then round to 0
 				elif cohortPopulation[cohort] * decayFactor < 0.5:
-					# print('population is decayed')
+					# print('rounding threshold: population is decayed')
 					treatmentMatrix[cohort][month] = 0
 					patientMatrix[cohort][month] = 0
 
 				#Otherwise, decay the population based on e^( - Time on Treatment / Duration), as time on treatment grows population declines
 				else:
 					# print('population is decaying')
-					treatmentMatrix[cohort][month] = float(cohortPopulation[cohort]) * decayFactor * self.indication.maintenanceDosesPerMonth
-					patientMatrix[cohort][month] = float(cohortPopulation[cohort]) * decayFactor
-					print('Decayed for cohort/month:' + str(cohort) +'/'+ str(month) + ' patients:' + str(patientMatrix[cohort][month]) + ' doses:' + str(treatmentMatrix[cohort][month]))
-				#track the sum
-				totalDoses[cohort] += float(treatmentMatrix[month][cohort])
-				totalPatients[cohort] += float(patientMatrix[month][cohort])
+					treatmentMatrix[cohort][month] = cohortPopulation[cohort] * Decimal(decayFactor) * Decimal(self.indication.maintenanceDosesPerMonth)
+					patientMatrix[cohort][month] = cohortPopulation[cohort] * decayFactor
 
-			totalDoses[cohort] = totalDoses[cohort] * self.market.compliance
+				#track the sum
+				# print('Decayed for cohort/month:' + str(cohort) +'/'+ str(month) + ' patients:' + str(patientMatrix[cohort][month]) + ' doses:' + str(treatmentMatrix[cohort][month]))
+				totalDoses[cohort] += Decimal(treatmentMatrix[month][cohort])
+				totalPatients[cohort] += patientMatrix[month][cohort]
+
+			totalDoses[cohort] = totalDoses[cohort] * Decimal(self.market.compliance)
 
 		#sum it all up
 		numpyDoseArray = array(totalDoses)
 		numpyPatientArray = array(totalPatients)
-		print('Total patients below,')
-		print(totalPatients)
-		print('Total doses below,')
-		print(totalDoses)
+		print('Total patients: ' + str(sum(numpyPatientArray)) + ' array below, ')
+		print(numpyPatientArray)
+		print('Total doses: ' + str(sum(numpyDoseArray)) + ' array below, ')
+		print(numpyDoseArray)
 
-		dosesSold = sum(numpyDoseArray)
-		sales = dosesSold * self.market.price
+		#order the price array
+		salesArray = []
+		for index, doses in enumerate(self.market.annualPrice):
+			print('index:' + str(index) + ' price:' + str(price) + ' numpyDoses')
+			salesArray.append(Decimal(price) * numpyDoseArray[index])
 
-		print(sales)
+		print(str(salesArray))
+
 		#Desired total sales amount is $68,748,740,000
 		#2019 sales should be $164,580,000, 2034 sales should be $4,919,110,000
 
