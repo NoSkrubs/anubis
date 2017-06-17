@@ -98,13 +98,26 @@ class Schools(object):
 
 BerkeleyHigh = Schools('BerkeleyHigh', ['math', 'science', 'history'])
 BerkeleyHigh.checkClass('math')
-MariaCorea = Schools('Maria Coreo', ['art', 'english', 'history'])
+MariaCarillo = Schools('Maria Carillo', ['art', 'english', 'history'])
 
 #Excersizes
 #1 - create a class of name city, it will have a name, population, and a state
 class City(object):
 	def __init__(self): #add value for name, population, city, and state
+		print('Created School')
+		self.name = name
+		self.places = places
+		self.population
 
+	def checkClass(self, x):
+		for myClass in self.classes:
+			print(myClass)
+			if x == myClass:
+				print(str(x) + 'is a class at ' at self.name)
+
+Berkely = city('Berkeley'),['park','school','house','appartment','ocean walk']
+Berkeley.checkPlace('park')
+SantaRosa = city('Santa Rosa'),['park',]
 	#add a function that checks to see whether the city has more than a million people
 	def isBigCity(self):
 
